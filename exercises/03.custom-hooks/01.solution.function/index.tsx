@@ -9,11 +9,15 @@ import { setGlobalSearchParams } from '#shared/utils'
 
 const getQueryParam = (params: URLSearchParams) => params.get('query') ?? ''
 
-function useSearchParams() {
+// 🐨 create a function called useSearchParams here and move much of what's
+// below into this hook.
+
+
+function useSearchParams(){
 	const [searchParams, setSearchParamsState] = useState(
 		() => new URLSearchParams(window.location.search),
 	)
-
+	
 	useEffect(() => {
 		function updateSearchParams() {
 			setSearchParamsState((prevParams) => {
@@ -26,7 +30,7 @@ function useSearchParams() {
 		window.addEventListener('popstate', updateSearchParams)
 		return () => window.removeEventListener('popstate', updateSearchParams)
 	}, [])
-
+	
 	function setSearchParams(...args: Parameters<typeof setGlobalSearchParams>) {
 		const searchParams = setGlobalSearchParams(...args)
 		setSearchParamsState((prevParams) => {
@@ -37,11 +41,20 @@ function useSearchParams() {
 		return searchParams
 	}
 
+	// as const aby ts wiedzial, ze wszystko to jest readonly i brane tak naprawde doslownie, literalnie, niezmiennie! 
 	return [searchParams, setSearchParams] as const
+
 }
 
 function App() {
+	// 🐨 move everything from here to the next 🐨 into the new function
+	// 🐨 move everything from the previous 🐨 to here into the new function
+
+	// 🐨 call useSearchParams to get the searchParams and setSearchParams functions
+
+	// potem mozemy wyciagnac te rzeczy z useSearchParams
 	const [searchParams, setSearchParams] = useSearchParams()
+
 	const query = getQueryParam(searchParams)
 
 	return (

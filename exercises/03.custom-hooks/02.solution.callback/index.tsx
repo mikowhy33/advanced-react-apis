@@ -27,6 +27,9 @@ export function useSearchParams() {
 		return () => window.removeEventListener('popstate', updateSearchParams)
 	}, [])
 
+	// 🐨 wrap this function in useCallback
+
+	// pod zmienna setSearchParams przypisujemy sobie funkcje useCallback ktora mowi, że ta funkcja powstaje raz i zachowuje tę samą referencję między renderami, nie zmieniamy jej w zadnym innym wypadku, poniewaz [] pozostaly puste. Jest to stabilne miedzy renderami 
 	const setSearchParams = useCallback(
 		(...args: Parameters<typeof setGlobalSearchParams>) => {
 			const searchParams = setGlobalSearchParams(...args)
@@ -37,9 +40,13 @@ export function useSearchParams() {
 			})
 			return searchParams
 		},
-		[],
+		[] // brak zaleznosci funkcja totalnie stabilna,
 	)
+	// 💰 note, this function doesn't have any dependencies so you can use [] as the dependency array
 
+	// przekazujemy tutaj jako const zeby wszystko bylo wiadome, ts wtedy nie dry sie ze searchparams to jakis url a setsearchparams to jakas funkcja tylko wiadome ze doslownie jest to, to co zostalo przekazane z tej funkcji
+
+	//Dzięki as const TypeScript traktuje zwracaną tablicę jako krotkę [URLSearchParams, typeof setSearchParams], a nie ogólną tablicę
 	return [searchParams, setSearchParams] as const
 }
 

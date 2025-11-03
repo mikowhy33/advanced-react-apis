@@ -7,22 +7,43 @@ import {
 } from '#shared/blog-posts'
 import { setGlobalSearchParams } from '#shared/utils'
 
+// 🦺 create a SearchParamsTuple type here that's a readonly array of two elements:
+// - the first element is a URLSearchParams instance
+// - the second element is typeof setGlobalSearchParams
+
+const bzz = typeof setGlobalSearchParams
+// okreslamy typ krotki
 type SearchParamsTuple = readonly [
 	URLSearchParams,
 	typeof setGlobalSearchParams,
 ]
+// 🐨 create a SearchParamsContext that is of this type
+// 💰 let's start with this as the default value (we'll improve it next):
+// [new URLSearchParams(window.location.search), setGlobalSearchParams]
+
+// tworzymy kontekst, okreslamy, ze ma byc typu SearchParamsTuple i przyjmuje na start parametry ktore sobie podalismy
+
+// createContext Tworzy obiekt, który będzie w stanie przechować jedną wartość (naszą krotkę) i dostarczyć ją wszystkim komponentom, które o to poproszą.
+
+// realnie nigdy nie uzywamy tego co w () dopiero w wywolaniu value
 const SearchParamsContext = createContext<SearchParamsTuple>([
 	new URLSearchParams(window.location.search),
 	setGlobalSearchParams,
 ])
 
+// 🐨 change this to SearchParamsProvider and accept children
+
+// okreslamy ze przyjmuje childreny czyli wartosci przekazywane w srodku
 function SearchParamsProvider({ children }: { children: React.ReactNode }) {
+	// searchParams, nasze aktualne search Parametry, set wiadomo funkcja do ich zmiany
 	const [searchParams, setSearchParamsState] = useState(
 		() => new URLSearchParams(window.location.search),
 	)
 
+	// nasluchiwanie na zmiany URL
 	useEffect(() => {
 		function updateSearchParams() {
+			// zmiana parametrow
 			setSearchParamsState((prevParams) => {
 				const newParams = new URLSearchParams(window.location.search)
 				return prevParams.toString() === newParams.toString()
@@ -30,32 +51,45 @@ function SearchParamsProvider({ children }: { children: React.ReactNode }) {
 					: newParams
 			})
 		}
+		// nasluchiwanie na zmiane popstateu czyli tych strzalek wtedy zmieniamy searchParamsy
 		window.addEventListener('popstate', updateSearchParams)
 		return () => window.removeEventListener('popstate', updateSearchParams)
 	}, [])
 
+	// pod zmienna setSearchParams przypisujemy sobie funkcje useCallback ktora mowi, że ta funkcja powstaje raz i zachowuje tę samą referencję między renderami, nie zmieniamy jej w zadnym innym wypadku, poniewaz [] pozostaly puste. Jest to stabilne miedzy renderami
+
+	// funckja do zmiany stanu
 	const setSearchParams = useCallback(
+		// argumenty maja byc parametrami setGlobalSearchParams
+		// pakuje sobie je do listy
 		(...args: Parameters<typeof setGlobalSearchParams>) => {
-			const searchParams = setGlobalSearchParams(...args)
+			// tutaj rozpakowane argumenty pod searchParams
+			const searchParamszz = setGlobalSearchParams(...args)
+			// rowniez zmiana parametrow
 			setSearchParamsState((prevParams) => {
-				return prevParams.toString() === searchParams.toString()
+				return prevParams.toString() === searchParamszz.toString()
 					? prevParams
-					: searchParams
+					: searchParamszz
 			})
-			return searchParams
+			return searchParamszz
 		},
-		[],
+		[], // brak zaleznosci funkcja totalnie stabilna,
 	)
 
-	const searchParamsTuple = [searchParams, setSearchParams] as const
+	// 🐨 instead of returning this, render the SearchParamsContext and
+	// provide this tuple as the value
+	// 💰 make sure to render the children as well!
 
-	return (
-		<SearchParamsContext value={searchParamsTuple}>
-			{children}
-		</SearchParamsContext>
-	)
+	// tupla posiada aktualne searchparametry, oraz metosda do zamiany
+	const tupla = [searchParams, setSearchParams] as const
+
+	// renderujemy nasze dzieci z wartosciami ktore okreslilismy w SearchParamsContext, wszystkie dzieci maja teraz dostep do tego tupla
+	return <SearchParamsContext value={tupla}>{children}</SearchParamsContext>
 }
 
+// 🐨 create a useSearchParams hook here that returns use(SearchParamsContext)
+
+// tu funkcja do zwrotu wartosci z SearchParamsContext
 export function useSearchParams() {
 	return use(SearchParamsContext)
 }
@@ -64,6 +98,8 @@ const getQueryParam = (params: URLSearchParams) => params.get('query') ?? ''
 
 function App() {
 	return (
+		// 🐨 wrap this in the SearchParamsProvider
+		// opakowujemy wszystko w providera wiec form i matchingposts maja dostep
 		<SearchParamsProvider>
 			<div className="app">
 				<Form />
@@ -74,9 +110,13 @@ function App() {
 }
 
 function Form() {
+	// pobranie aktualnej krotki z provideram sarchParams aktualny obiekt URLSearchParams
+
+	//setSearchParams → funkcja, która modyfikuje URL i aktualizuje stan w Providerze
+
+	// gdyby nie owiniecie to tutaj serachParams i setSearch bylyby innymi instancjami niz to rowniez w mathcing!
 	const [searchParams, setSearchParams] = useSearchParams()
 	const query = getQueryParam(searchParams)
-
 	const words = query.split(' ').map((w) => w.trim())
 
 	const dogChecked = words.includes('dog')

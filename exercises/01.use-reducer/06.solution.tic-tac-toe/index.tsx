@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import * as ReactDOM from 'react-dom/client'
 import {
 	calculateNextValue,
@@ -48,12 +48,75 @@ function Board({
 	)
 }
 
+//history to tablica kolejnych stanów planszy (każdy to 9-elementowa tablica Squares)
+
+//currentStep to numer kroku, który jest aktualnie wyświetlany.
 const defaultState: GameState = {
 	history: [Array(9).fill(null)],
 	currentStep: 0,
 }
-
 const localStorageKey = 'tic-tac-toe'
+// 🦺 Create a GameAction type here which supports all three types of state changes
+// that can happen for our reducer: SELECT_SQUARE, RESTART, and SELECT_STEP.
+
+type GameAction =
+	| { type: 'SELECT_SQUARE'; index: number }
+	| { type: 'RESTART' }
+	| { type: 'SELECT_STEP'; step: number }
+
+// 🐨 Create a gameStateReducer function which accepts the GameState and GameAction
+// and handle all three types of state changes.
+// 💰 you can borrow lots of the logic from the component below in your implementation
+
+function gameStateReducer(state: GameState, action: GameAction) {
+	switch (action.type) {
+		case 'SELECT_SQUARE':
+			// ze stany pobieramy aktualny krok i historie krokow cala tablice
+			const { currentStep, history } = state
+
+			// aktualna plansza pobierana z historii na podstawie aktualnego kroku
+			const currentSquares = history[currentStep]
+
+			// obliczenie wygranego
+			const winner = calculateWinner(currentSquares)
+
+			// obliczenie nastepnej wartosci
+			const nextValue = calculateNextValue(currentSquares)
+
+			// nowa historia, jesli jakies wykonywalismy to bierzemy te z przyszlosci
+			const newHistory = history.slice(0, currentStep + 1)
+
+			// jesli wygrany badz aktualny krok zajety to return
+			if (winner || currentSquares[action.index]) {
+				return state
+			}
+
+			// aktualna plansza z akcja i nastepnym krokiem, with tworzy nowa plansze na podstawie starej z jednym nadpisanym polem
+			const squares = currentSquares.with(action.index, nextValue)
+
+			return {
+				// zwrocenie historii krokow z aktualna plansza
+				history: [...newHistory, squares],
+				// aktualny krok
+				currentStep: newHistory.length,
+			}
+
+		case 'SELECT_STEP':
+			// returnujemy wszystkie poprzednie stany, oraz nadpisujemy currentStep  nowym krokiem
+
+			return { ...state, currentStep: action.step }
+
+		case 'RESTART':
+			return defaultState
+
+		default:
+			throw new Error(`Unknown action type`)
+	}
+}
+// 🐨 Create a getInitialGameState function here which returns the initial game
+// state (move this from the useState callback below)
+
+// Funkcja odczytująca poprzedni stan gry z localStorage – jeśli nie ma, to używa domyślnego stanu”.
 
 function getInitialGameState() {
 	let localStorageValue
@@ -67,49 +130,14 @@ function getInitialGameState() {
 	return isValidGameState(localStorageValue) ? localStorageValue : defaultState
 }
 
-type GameAction =
-	| { type: 'SELECT_SQUARE'; index: number }
-	| { type: 'SELECT_STEP'; step: number }
-	| { type: 'RESTART' }
-
-function gameStateReducer(state: GameState, action: GameAction) {
-	switch (action.type) {
-		case 'SELECT_SQUARE': {
-			const { currentStep, history } = state
-			const newHistory = history.slice(0, currentStep + 1)
-			const currentSquares = history[currentStep]
-			const winner = calculateWinner(currentSquares)
-
-			if (winner || currentSquares[action.index]) return state
-
-			const squares = currentSquares.with(
-				action.index,
-				calculateNextValue(history[currentStep]),
-			)
-
-			return {
-				history: [...newHistory, squares],
-				currentStep: newHistory.length,
-			}
-		}
-		case 'SELECT_STEP': {
-			return { ...state, currentStep: action.step }
-		}
-		case 'RESTART': {
-			return defaultState
-		}
-		default:
-			throw new Error(`Unhandled action type: ${action}`)
-	}
-}
-
 function App() {
-	const [state, dispatch] = useReducer(
+	// 🐨 change this to use useReducer with the gameStateReducer and the getInitialGameState function
+
+	const [state, setState] = useReducer(
 		gameStateReducer,
 		null,
 		getInitialGameState,
 	)
-
 	const currentSquares = state.history[state.currentStep]
 
 	const winner = calculateWinner(currentSquares)
@@ -121,11 +149,14 @@ function App() {
 	}, [state])
 
 	function selectSquare(index: number) {
-		dispatch({ type: 'SELECT_SQUARE', index })
+		// 🐨 move this logic to the reducer
+		// then call the dispatch function with the proper type
+
+		setState({ type: 'SELECT_SQUARE', index })
 	}
 
 	function restart() {
-		dispatch({ type: 'RESTART' })
+		setState({ type: 'RESTART' }) // 🐨 update this to use the dispatch function with the proper type
 	}
 
 	const moves = state.history.map((_stepSquares, step) => {
@@ -138,9 +169,12 @@ function App() {
 		return (
 			<li key={step}>
 				<button
+					// 🐨 update this to use the dispatch function with the proper type
 					onClick={() =>
-						// setState(previousState => ({ ...previousState, currentStep: step }))
-						dispatch({ type: 'SELECT_STEP', step })
+						setState({
+							type: 'SELECT_STEP',
+							step,
+						})
 					}
 					aria-disabled={isCurrentStep}
 					aria-label={label}
@@ -171,3 +205,8 @@ function App() {
 const rootEl = document.createElement('div')
 document.body.append(rootEl)
 ReactDOM.createRoot(rootEl).render(<App />)
+
+/*
+eslint
+	@typescript-eslint/no-unused-vars: "off",
+*/
